@@ -26,15 +26,38 @@ class MediaHandler extends Doctrine_Template
         $field = $params['field'];
       }
 
-      $params = array_merge( $this->_options['params'], (array) $params );
-
-      $this->_handledMedias[$field] = array(
-        'directory'   => empty( $params['directory'] ) ? $this->getDefaultDirectory() : $params['directory'],
-        'auto_remove' => $params['auto_remove'] ? true : false,
-      );
+      $this->addMediaField($field, $params);
     }
 
-    $this->addListener( new MediaHandlerListener( $this->_handledMedias ) );
+    $this->addListener(new MediaHandlerListener($this->_handledMedias));
+  }
+
+  /**
+   * Adds a media field
+   *
+   * @param string $field
+   * @param array  $params
+   */
+  public function addMediaField($field, array $params = array())
+  {
+    $params = $this->mergeDefaultParams($params);
+
+    $params['directory']   = $this->configureDirectory($param['directory']);
+    $params['auto_remove'] = (bool) $params['auto_remove'];
+
+    $this->_handledMedias[$field] = $params;
+  }
+
+  /**
+   * Indicates whether the specified field has currently a media
+   *
+   * @return boolean
+   */
+  public function hasMedia($field)
+  {
+    $this->isMediaField($field, true);
+
+    return '' != $this->getInvoker()->get($field);
   }
 
   /**
@@ -47,7 +70,7 @@ class MediaHandler extends Doctrine_Template
    */
   public function getMediaPath($field, $filename = null)
   {
-    $directory = $this->getMediaDirectory( $field );
+    $directory = $this->getMediaDirectory($field);
 
     if (null === $filename)
     {
@@ -71,7 +94,43 @@ class MediaHandler extends Doctrine_Template
   {
     $this->isMediaField($field, true);
 
-    return $this->_handledMedias[$field]['directory'];
+    return $this->_handledMedias[$field]['directory']['path'];
+  }
+
+  /**
+   * Gets the source of the media directory
+   *
+   * @throw Exception If the media is not stored under the public directory
+   *
+   * @return string or null if the media field is empty
+   */
+  public function getMediaDirectorySrc($field)
+  {
+    $this->isMediaField($field, true);
+
+    if (!$this->_handledMedias[$field]['directory']['source'])
+    {
+      throw new Exception(sprintf('The %s field has no source directory.', $field));
+    }
+
+    return $this->_handledMedias[$field]['directory']['source'];
+  }
+
+  /**
+   * Gets the source of the media
+   *
+   * @throw Exception If the media is not stored under the public directory
+   *
+   * @return string or null if the media field is empty
+   */
+  public function getMediaSrc($field)
+  {
+    if (!$this->hasMedia($field))
+    {
+      return null;
+    }
+
+    return $this->getMediaDirectorySrc($field) . $this->getInvoker()->get($field);
   }
 
   /**
@@ -85,7 +144,7 @@ class MediaHandler extends Doctrine_Template
   }
 
   /**
-   * Indicates whether the field corresponds to an handled media or not
+   * Indicates whether the field corresponds to an handled media
    *
    * @param string $field
    * @return boolean
@@ -107,8 +166,77 @@ class MediaHandler extends Doctrine_Template
    *
    * @return string
    */
-  protected function getDefaultDirectory()
+  protected function getDefaultDirectoryPath()
   {
     return sfConfig::get('sf_upload_dir') . DIRECTORY_SEPARATOR . $this->getTable()->getTableName();
+  }
+
+  /**
+   * Guess the source for the specified directory path
+   *
+   * @return string or false of the directory source is not under the web directory
+   */
+  protected function guessDirectorySource($path)
+  {
+    $web  = str_replace('\\', '/', sfConfig::get('sf_web_dir'));
+    $path = str_replace('\\', '/', $path);
+
+    return 0 === strpos($path, $web) ? str_replace($path, $web) : false;
+  }
+
+  /**
+   * Indicates whether the specified path is relative
+   *
+   * @return boolean
+   */
+  protected function isPathRelative($path)
+  {
+    return $path[0] != '/' && $path[0] != '\\' && !(strlen($path) > 3 && ctype_alpha($path[0]) && $path[1] == ':' && ($path[2] == '\\' || $path[2] == '/'));
+  }
+
+  /**
+   * Complete the path. If the specified path is relative, it prepend the web directory path
+   *
+   * @return string
+   */
+  protected function completePath($path)
+  {
+    if ($this->isPathRelative())
+    {
+      $path = sfConfig::get('sf_web_dir').DIRECTORY_SEPARATOR.$path;
+    }
+
+    return $path;
+  }
+
+  /**
+   * Configures the directory
+   *
+   * @param mixed $directory
+   *
+   * @return array
+   */
+  protected function configureDirectory($directory)
+  {
+    if (!is_array($directory))
+    {
+      $directory['path'] = $directory;
+    }
+
+    if (empty($directory['path']))
+    {
+      $directory['path'] = $this->getDefaultDirectoryPath();
+    }
+    else
+    {
+      $directory['path'] = $this->completePath($directory['path']);
+    }
+
+    if (empty($directory['source']))
+    {
+      $directory['source'] = $this->guessDirectorySource($directory['path']);
+    }
+
+    return $directory;
   }
 }
