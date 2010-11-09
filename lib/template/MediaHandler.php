@@ -17,35 +17,22 @@ class MediaHandler extends Doctrine_Template
    */
   protected $_handledMedias = array();
 
-  public function setTableDefinition()
-  {
-    foreach ( $this->_options['medias'] as $field => $params )
-    {
-      if ( !empty( $params['field'] ) )
-      {
-        $field = $params['field'];
-      }
-
-      $this->addMediaField($field, $params);
-    }
-
-    $this->addListener(new MediaHandlerListener($this->_handledMedias));
-  }
-
   /**
-   * Adds a media field
+   * Indicates whether the field corresponds to an handled media
    *
    * @param string $field
-   * @param array  $params
+   * @return boolean
    */
-  public function addMediaField($field, array $params = array())
+  public function isMediaField($field, $orThrowException = false)
   {
-    $params = $this->mergeDefaultParams($params);
+    $isHandledMedia = in_array($field, $this->getMediaFieldNames());
 
-    $params['directory']   = $this->configureDirectory($param['directory']);
-    $params['auto_remove'] = (bool) $params['auto_remove'];
+    if ($orThrowException && !$isHandledMedia)
+    {
+      throw new Exception(sprintf('The "%s" field is not an handled media.', $field));
+    }
 
-    $this->_handledMedias[$field] = $params;
+    return $isHandledMedia;
   }
 
   /**
@@ -61,6 +48,18 @@ class MediaHandler extends Doctrine_Template
   }
 
   /**
+   * Gets the path of the media directory
+   *
+   * @param string $field
+   */
+  public function getMediaDirectoryPath($field)
+  {
+    $this->isMediaField($field, true);
+
+    return $this->_handledMedias[$field]['directory']['path'];
+  }
+
+  /**
    * Gets the path of the media
    *
    * @param string $field
@@ -70,31 +69,19 @@ class MediaHandler extends Doctrine_Template
    */
   public function getMediaPath($field, $filename = null)
   {
-    $directory = $this->getMediaDirectory($field);
+    $directory = $this->getMediaDirectoryPath($field);
 
     if (null === $filename)
     {
+      if (!$this->hasMedia($field))
+      {
+        return null;
+      }
+
       $filename = $this->getInvoker()->get($field);
     }
 
-    if (empty($filename))
-    {
-      return null;
-    }
-
     return $directory . DIRECTORY_SEPARATOR . $filename;
-  }
-
-  /**
-   * Gets the path of the media directory
-   *
-   * @param string $field
-   */
-  public function getMediaDirectory($field)
-  {
-    $this->isMediaField($field, true);
-
-    return $this->_handledMedias[$field]['directory']['path'];
   }
 
   /**
@@ -144,21 +131,49 @@ class MediaHandler extends Doctrine_Template
   }
 
   /**
-   * Indicates whether the field corresponds to an handled media
+   * Merge default params with the specfied params
+   *
+   * @param array $params
+   *
+   * @return array
+   */
+  protected function mergeDefaultParams(array $params)
+  {
+    return array_merge($this->_options['params'], $params);
+  }
+
+  /**
+   * Adds a media field
    *
    * @param string $field
-   * @return boolean
+   * @param array  $params
    */
-  public function isMediaField($field, $orThrowException = false)
+  public function addMediaField($field, array $params = array())
   {
-    $isHandledMedia = in_array($field, $this->getMediaFieldNames());
+    $params = $this->mergeDefaultParams($params);
 
-    if ($orThrowException && !$isHandledMedia)
+    $params['directory']   = $this->configureDirectory($param['directory']);
+    $params['auto_remove'] = (bool) $params['auto_remove'];
+
+    $this->_handledMedias[$field] = $params;
+  }
+
+  /**
+   * @see Doctrine_Template::setTableDefinition()
+   */
+  public function setTableDefinition()
+  {
+    foreach ( $this->_options['medias'] as $field => $params )
     {
-      throw new Exception(sprintf('The "%s" field is not an handled media.', $field));
+      if ( !empty( $params['field'] ) )
+      {
+        $field = $params['field'];
+      }
+
+      $this->addMediaField($field, $params);
     }
 
-    return $isHandledMedia;
+    $this->addListener(new MediaHandlerListener($this->_handledMedias));
   }
 
   /**
