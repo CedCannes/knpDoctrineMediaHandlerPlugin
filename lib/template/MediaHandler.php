@@ -117,7 +117,7 @@ class MediaHandler extends Doctrine_Template
       return null;
     }
 
-    return $this->getMediaDirectorySrc($field) . $this->getInvoker()->get($field);
+    return $this->getMediaDirectorySrc($field) . '/' . $this->getInvoker()->get($field);
   }
 
   /**
@@ -196,7 +196,7 @@ class MediaHandler extends Doctrine_Template
     $web  = str_replace('\\', '/', sfConfig::get('sf_web_dir'));
     $path = str_replace('\\', '/', $path);
 
-    return 0 === strpos($path, $web) ? str_replace($path, $web) : false;
+    return 0 === strpos($path, $web) ? str_replace($web, '', $path) : false;
   }
 
   /**
@@ -235,7 +235,7 @@ class MediaHandler extends Doctrine_Template
   {
     if (!is_array($directory))
     {
-      $directory['path'] = $directory;
+      $directory = array('path' => $directory);
     }
 
     if (empty($directory['path']))
