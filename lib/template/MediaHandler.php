@@ -152,7 +152,7 @@ class MediaHandler extends Doctrine_Template
   {
     $params = $this->mergeDefaultParams($params);
 
-    $params['directory']   = $this->configureDirectory($param['directory']);
+    $params['directory']   = $this->configureDirectory($params['directory']);
     $params['auto_remove'] = (bool) $params['auto_remove'];
 
     $this->_handledMedias[$field] = $params;
@@ -216,9 +216,9 @@ class MediaHandler extends Doctrine_Template
    */
   protected function completePath($path)
   {
-    if ($this->isPathRelative())
+    if ($this->isPathRelative($path))
     {
-      $path = sfConfig::get('sf_web_dir').DIRECTORY_SEPARATOR.$path;
+      $path = sfConfig::get('sf_web_dir') . DIRECTORY_SEPARATOR . $path;
     }
 
     return $path;
