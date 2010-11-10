@@ -165,7 +165,12 @@ class MediaHandler extends Doctrine_Template
   {
     foreach ( $this->_options['medias'] as $field => $params )
     {
-      if ( !empty( $params['field'] ) )
+      if (!is_array($params))
+      {
+        $field = $params;
+        $params = array();
+      }
+      elseif ( !empty( $params['field'] ) )
       {
         $field = $params['field'];
       }
