@@ -25,7 +25,7 @@ class MediaHandlerListener extends Doctrine_Record_Listener
     {
       if ($params['auto_remove'] && array_key_exists($field, $modified) && !empty($modified[$field]) && $modified[$field] != $event->getInvoker()->get($field))
       {
-        @unlink($event->getInvoker()->getMadiaPath($field, $modified[$field]));
+        @unlink($event->getInvoker()->getMediaPath($field, $modified[$field]));
       }
     }
   }
